@@ -10,7 +10,7 @@
 
 
 
-Zepton Macro is a cross-platform and intuitive Bee Swarm Simulator macro.
+Zepton Macro is a cross-platform and intuitive Bee Swarm Simulator macro that aims to finally allow Linux, macOS and iOS users to macro under one single codebase. 
 Supports Windows as of right now, with plans to bring it to
 Linux, macOS, Android and iOS.
 
