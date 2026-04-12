@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+
+<html data-bs-theme="dark">
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  </head>
+  <link rel="stylesheet" href="./bootstrap.min.css">
+  
+  <style>
+    @font-face {
+  font-family: 'Inter';
+  src: url('./Inter.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+}
+.offcanvas-header {
+  justify-content: flex-start;
+  width:100%;
+}
+#offcanvasNavbar{
+  width: 35vw;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+:root {
+  --bs-body-font-family: 'Inter', sans-serif;
+}
+.navbar {
+  height: 100%
+}
+.offcanvas-body {
+  align-self: flex-start;
+}
+.invisible {
+  visibility: hidden;
+}
+.z-screen {
+  align-self: center;
+  display: flex;
+   width: 100%;
+  height: 100%;
+      align-items: center;
+justify-content: center;
+}
+.z-container {
+  width: 100%;
+  height: 100%;
+}
+
+  </style>
+  <body>
+    
+    <nav class="navbar fixed-top">
+      
+  <div class="container-fluid" bs>
+    <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar" aria-controls="offcanvasNavbar" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <a class="navbar-brand" href="#"></a>
+    
+    <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasNavbar" aria-labelledby="offcanvasNavbarLabel">
+      <div class="offcanvas-header">
+        <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body">
+        <ul class="navbar-nav justify-content-end flex-grow-1 pe-3">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="#">Gather</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#">Collect/Kill</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="#" id="aboutButton" data-bs-dismiss="offcanvas">About</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="z-container">
+    <div class="invisible z-screen" id="aboutScreen">
+      coming soon! Zepton Macro 0.2.0
+    </div>
+  </div>
+  
+</nav>
+
+    <script src="./bootstrap.bundle.min.js"></script> 
+    <script>
+      {
+        let aboutScreen = document.getElementById("aboutButton")
+        let aboutButton = document.getElementById("aboutScreen")
+        aboutScreen.addEventListener('click', () => {
+          aboutButton.classList.remove("invisible")
+        })
+      }
+    </script>
+  </body>
+  
+</html>

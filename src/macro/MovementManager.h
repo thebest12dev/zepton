@@ -1,6 +1,25 @@
 #pragma once
 #include <string>
 #include <vector>
+#ifdef __linux__
+#include <X11/Xlib.h>
+#include <X11/extensions/XTest.h>
+//WARN: untested!
+#define KEY_FORWARD XK_w
+#define KEY_BACKWARD XK_s
+#define KEY_LEFT XK_a
+#define KEY_RIGHT XK_d
+#define KEY_ROTLEFT XK_period
+#define KEY_ROTRIGHT XK_comma
+#define KEY_ROTUP XK_Page_Up
+#define KEY_ROTDOWN XK_Page_Down
+#define KEY_NULL 0x00
+#define KEY_ESCAPE XK_Escape
+#define KEY_R XK_r
+#define KEY_ENTER XK_Return
+#define KEY_E XK_e
+#define KEY_SPACE XK_space
+#elif _WIN32
 #define KEY_FORWARD 0x11
 #define KEY_BACKWARD 0x1F
 #define KEY_LEFT 0x1E
@@ -15,6 +34,8 @@
 #define KEY_ENTER 0x00
 #define KEY_E 0x12
 #define KEY_SPACE 0x39
+#endif
+
 namespace zepton {
   struct MovementStep {
     std::vector<char> keys;

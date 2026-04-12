@@ -1,13 +1,72 @@
 #include "MovementManager.h"
+#ifdef _WIN32
 #include <windows.h>
+#endif
+
 #include <thread>
 #include <chrono>
 #include "Player.h"
 #include <iostream>
+#ifdef __linux__ 
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#endif
 
+#include <cstring>
+#include <iostream>
+
+#ifdef __linux__
+  Display* gX11Display = XOpenDisplay(nullptr);
+#endif
 namespace {
   using namespace zepton;
+#ifdef __linux__
+  Window linuxFindWindowByTitle(Display* display, Window root, const char* title) {
+    Window rootRet, parentRet;
+    Window* children;
+    unsigned int nchildren;
 
+    if (!XQueryTree(display, root, &rootRet, &parentRet, &children, &nchildren))
+      return 0;
+
+    for (unsigned int i = 0; i < nchildren; i++) {
+      char* window_name = nullptr;
+
+      if (XFetchName(display, children[i], &window_name) && window_name) {
+        if (strcmp(window_name, title) == 0) {
+          XFree(window_name);
+          return children[i];
+        }
+        XFree(window_name);
+      }
+
+      Window w = findWindowByTitle(display, children[i], title);
+      if (w) return w;
+    }
+
+    return 0;
+  }
+  
+  void activateWindow(Window target) {
+    Atom active = XInternAtom(display, "_NET_ACTIVE_WINDOW", False);
+
+    XEvent e{};
+    e.xclient.type = ClientMessage;
+    e.xclient.message_type = active;
+    e.xclient.display = display;
+    e.xclient.window = target;
+    e.xclient.format = 32;
+
+    e.xclient.data.l[0] = 1; 
+    e.xclient.data.l[1] = CurrentTime;
+
+    XSendEvent(display,
+      DefaultRootWindow(display),
+      False,
+      SubstructureRedirectMask | SubstructureNotifyMask,
+      &e);
+  }
+#endif
   /*
     Reference walkspeed which should the patterns be executed at relative to the timings.
     Typically the developer's walkspeed, if needed change this value then change the
