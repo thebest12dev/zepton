@@ -14,7 +14,7 @@ int main()
   zepton::Logger::info("OCR identifier: tesseract (eng)", "Zepton");
   zepton::ui::CoreGui gui;
   gui.start();
-  //zepton::Player player;
+  zepton::Player player; // tessseract thingy linkage
  // player.claimHive();
  // player.convertHoney();
   //player.getMovementManager().moveTo("spawn_ramp");
