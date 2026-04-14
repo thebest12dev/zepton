@@ -2,23 +2,21 @@
 #include <string>
 #include <vector>
 #ifdef __linux__
-#include <X11/Xlib.h>
-#include <X11/extensions/XTest.h>
-//WARN: untested!
-#define KEY_FORWARD XK_w
-#define KEY_BACKWARD XK_s
-#define KEY_LEFT XK_a
-#define KEY_RIGHT XK_d
-#define KEY_ROTLEFT XK_period
-#define KEY_ROTRIGHT XK_comma
-#define KEY_ROTUP XK_Page_Up
-#define KEY_ROTDOWN XK_Page_Down
+//WARN: untested! evtest
+#define KEY_FORWARD 17
+#define KEY_BACKWARD 31
+#define KEY_LEFT 30
+#define KEY_RIGHT 32
+#define KEY_ROTLEFT 52
+#define KEY_ROTRIGHT 51
+#define KEY_ROTUP 0
+#define KEY_ROTDOWN 0
 #define KEY_NULL 0x00
-#define KEY_ESCAPE XK_Escape
-#define KEY_R XK_r
-#define KEY_ENTER XK_Return
-#define KEY_E XK_e
-#define KEY_SPACE XK_space
+#define KEY_ESCAPE 1
+#define KEY_R 19
+#define KEY_ENTER 28
+#define KEY_E 18
+#define KEY_SPACE 57
 #elif _WIN32
 #define KEY_FORWARD 0x11
 #define KEY_BACKWARD 0x1F

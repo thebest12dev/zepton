@@ -15,7 +15,30 @@ Supports Windows as of right now, with plans to bring it to
 Linux, macOS, Android and iOS.
 
 ## Installation
-Download `zepton_x.y.z` from the Releases page for your desired OS, then simply extract and run!
+### Windows
+Download `zepton_x.y.z_windows` from the Releases page, then simply extract and run!
+### Linux
+> [!NOTE]
+> Zepton Macro supports KDE (X11 and Wayland) and GNOME (X11-only). Anything else may not work due to incompatibilities!
+
+> [!WARNING]
+> Zepton Macro will NOT work on GNOME (Wayland) due to restrictions with OCR. If you still want to proceed, recompile with `ZEPTON_PLATFORM_SUPPORTS_OCR=false`
+
+1. Download `zepton_x.y.z_linux` from the Releases page.
+2. Install these dependencies:
+```
+sudo apt install scrot ydotool ydotoold xdotool
+```
+3. Configure the ydotool daemon
+   - You should add the line below to autostart
+   - ydotoold is needed for performance reasons
+```
+sudo ydotoold --socket-path="/run/user/1000/.ydotool_socket" --socket-own="1000:1000"
+```
+4. Extract and run!
+   - You could optionally run it directly from the CLI by creating `zepton.config` and passing that in the `--config`/`-c` flag.
+
+
 
 ## Contributing
 Zepton Macro is open-source, and well open source projects got to have some contribution.

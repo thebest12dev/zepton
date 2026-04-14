@@ -1,5 +1,6 @@
 #pragma once
 #include <string>
+#include <cstdint>
 #include "StatMonitor.h"
 #include "MovementManager.h"
 #include "OCRInstance.h"

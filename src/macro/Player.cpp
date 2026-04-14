@@ -1,6 +1,10 @@
 #include "Player.h"
 #include <sstream>
+#include <chrono>
+#include <thread>
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 #define SSTREAM(x) (std::stringstream() << x).str()
 namespace {
   zepton::Rect dialog = { 0.075f, 0.160f, 0.36f, 0.628f };
@@ -92,7 +96,7 @@ namespace zepton {
     if (reset) {
       movementManager.moveTo("hive_reset");
       movementManager.press(KEY_E);
-      Sleep(500);
+      std::this_thread::sleep_for(std::chrono::milliseconds(500));
       while (true) {
         ocr.setOCRRelCoords(dialog);
         std::string text = ocr.getText();
@@ -106,7 +110,7 @@ namespace zepton {
         else if (text.find("Make Honey") != std::string::npos) {
           zepton::Logger::info("Make Honey prompt detected while converting!", "Hive");
           movementManager.press(KEY_E);
-          Sleep(500);
+          std::this_thread::sleep_for(std::chrono::milliseconds(500));
           continue;
         } 
       }
@@ -119,7 +123,7 @@ namespace zepton {
     if (fieldId == "pine_field" && movementManager.location != "pine_field") {
       Logger::info("Going to the Pine Tree Forest...", "Movement");
       movementManager.moveTo("red_cannon");
-      Sleep(100);
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
       ocr.setOCRRelCoords(dialog);
       std::string text = ocr.getText();
       if (text.find("Red Cannon") != std::string::npos) {

@@ -2,69 +2,42 @@
 #ifdef _WIN32
 #include <windows.h>
 #endif
+#include <sstream>
 
+#define SSTREAM(x) (std::stringstream() << x).str()
 #include <thread>
 #include <chrono>
 #include "Player.h"
 #include <iostream>
 #ifdef __linux__ 
-#include <X11/Xlib.h>
-#include <X11/Xatom.h>
+#include <unistd.h>
 #endif
 
 #include <cstring>
 #include <iostream>
 
 #ifdef __linux__
-  Display* gX11Display = XOpenDisplay(nullptr);
 #endif
 namespace {
   using namespace zepton;
 #ifdef __linux__
-  Window linuxFindWindowByTitle(Display* display, Window root, const char* title) {
-    Window rootRet, parentRet;
-    Window* children;
-    unsigned int nchildren;
-
-    if (!XQueryTree(display, root, &rootRet, &parentRet, &children, &nchildren))
-      return 0;
-
-    for (unsigned int i = 0; i < nchildren; i++) {
-      char* window_name = nullptr;
-
-      if (XFetchName(display, children[i], &window_name) && window_name) {
-        if (strcmp(window_name, title) == 0) {
-          XFree(window_name);
-          return children[i];
-        }
-        XFree(window_name);
-      }
-
-      Window w = findWindowByTitle(display, children[i], title);
-      if (w) return w;
+  std::string getDesktopEnvironment() {
+    const char* xdgDesktop = std::getenv("XDG_CURRENT_DESKTOP");
+    if (xdgDesktop) {
+      std::string de = xdgDesktop;
+      if (de.find("KDE") != std::string::npos) return "KDE";
+      if (de.find("GNOME") != std::string::npos) return "GNOME";
     }
 
-    return 0;
-  }
-  
-  void activateWindow(Window target) {
-    Atom active = XInternAtom(display, "_NET_ACTIVE_WINDOW", False);
+    
+    const char* desktopSession = std::getenv("DESKTOP_SESSION");
+    if (desktopSession) {
+      std::string session = desktopSession;
+      if (session.find("plasma") != std::string::npos) return "KDE";
+      if (session.find("gnome") != std::string::npos) return "GNOME";
+    }
 
-    XEvent e{};
-    e.xclient.type = ClientMessage;
-    e.xclient.message_type = active;
-    e.xclient.display = display;
-    e.xclient.window = target;
-    e.xclient.format = 32;
-
-    e.xclient.data.l[0] = 1; 
-    e.xclient.data.l[1] = CurrentTime;
-
-    XSendEvent(display,
-      DefaultRootWindow(display),
-      False,
-      SubstructureRedirectMask | SubstructureNotifyMask,
-      &e);
+    return "Unknown";
   }
 #endif
   /*
@@ -203,9 +176,11 @@ namespace zepton {
   void MovementManager::keyUp(char key, bool sc)
   {
 #ifdef _WIN64
+   
     keybd_event(sc ? 0 : key, sc ? key : 0, KEYEVENTF_KEYUP, 0); // use keybd_event
 #elif __linux__
     // send input with x11 to sober
+    std::system(SSTREAM("./ydotool key " << static_cast<int>(key) << ":0").c_str());
 #endif // _WIN64
     
   }
@@ -215,6 +190,7 @@ namespace zepton {
     keybd_event(sc ? 0 : key, sc ? key : 0, 0, 0); // use keybd_event
 #elif __linux__
     // send input with x11 to sober
+    std::system(SSTREAM("./ydotool key " << static_cast<int>(key) << ":1").c_str());
 #endif 
   }
 
@@ -233,8 +209,17 @@ namespace zepton {
   // Executes a movement plan (path).
   void MovementManager::executeMovement(MovementPlan plan) {
     //focus roblox
-    HWND roblox = FindWindow(NULL, "Roblox (Zepton Macro)");
+#ifdef _WIN32
+    HWND roblox = FindWindow(NULL, "Roblox");
     SetForegroundWindow(roblox);
+#elif __linux__
+    if (getDesktopEnvironment() == "KDE") {
+      std::system(R"(./kdotool search --class "Sober" windowactivate)");
+    }
+    else if (getDesktopEnvironment() == "GNOME") {
+      std::system(R"(xdotool search --name "Sober" windowactivate)");
+    }
+#endif
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     for (MovementStep step : plan.movementSteps)
     {

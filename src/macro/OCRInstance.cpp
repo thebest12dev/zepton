@@ -1,10 +1,95 @@
 #include "OCRInstance.h"
+#ifdef _WIN32
 #include <Windows.h>
+#endif
 #include <opencv4/opencv2/opencv.hpp>
-
+#ifdef __linux__
+#include <unistd.h>
+#include <sys/wait.h>
+#endif
 #include <tesseract/baseapi.h>
 #include <leptonica/allheaders.h>
 namespace {
+#ifdef __linux__
+  std::string getDesktopEnvironment() {
+	const char* sessionType = std::getenv("XDG_SESSION_TYPE");
+
+    if (sessionType != nullptr) {
+        return sessionType;
+    } else {
+        
+        if (std::getenv("WAYLAND_DISPLAY")) {
+            return "wayland";
+        } else if (std::getenv("DISPLAY")) {
+            return "x11";
+        } 
+    }
+return "unknown";
+}
+  std::vector<unsigned char> linuxCaptureScreen() {
+    int pipefd[2];
+    if (pipe(pipefd) == -1) {
+      throw std::runtime_error("pipe failed");
+    }
+
+    pid_t pid = fork();
+    if (pid == -1) {
+      throw std::runtime_error("fork failed");
+    }
+
+    if (pid == 0) {
+      close(pipefd[0]);
+
+      dup2(pipefd[1], STDOUT_FILENO);
+      close(pipefd[1]);
+      if (getDesktopEnvironment() == "wayland") {
+	//assuming kde
+      char* args[] = {
+          (char*)"spectacle",
+          (char*)"-bfo",
+          (char*)"/dev/stdout",
+          nullptr
+};
+        execvp("spectacle", args);
+      } else if (getDesktopEnvironment() == "x11") {
+	  char* args[] = {
+          (char*)"scrot",
+          (char*)"-q",
+          (char*)"100",
+	  (char*)"--silent",
+	  (char*)"-",
+          nullptr};
+	  execvp("scrot", args);
+      };
+_exit(1);
+   }
+    
+
+    close(pipefd[1]); 
+
+    std::vector<unsigned char> buffer;
+    char temp[4096];
+
+    ssize_t n;
+    while ((n = read(pipefd[0], temp, sizeof(temp))) > 0) {
+      buffer.insert(buffer.end(), temp, temp + n);
+    }
+
+    close(pipefd[0]);
+    waitpid(pid, nullptr, 0);
+
+    return buffer;
+  }
+  cv::Mat linuxPngToCVMat(const std::vector<unsigned char>& pngBytes) {
+    cv::Mat img = cv::imdecode(pngBytes, cv::IMREAD_UNCHANGED);
+
+    if (img.empty()) {
+      throw std::runtime_error("failed to decode PNG to cv::Mat!");
+    }
+
+    return img;
+  }
+#elif _WIN32
 
   HBITMAP winCaptureScreen() {
     HDC hScreen = GetDC(NULL);
@@ -27,6 +112,7 @@ namespace {
     GetBitmapBits(hBitmap, bmp.bmHeight * bmp.bmWidth * 4, mat.data);
     return mat;
   }
+#endif
   cv::Mat matRelCoords(cv::Mat& mat, zepton::Rect& rect) {
     float x1 = rect.left;
     float x2 = rect.right;
@@ -67,8 +153,13 @@ namespace zepton {
   }
   std::string OCRInstance::getText()
   {
+#ifdef _WIN32
     auto bitmap = winCaptureScreen();
     cv::Mat mat = winHBitmapToCVMat(bitmap);
+#elif __linux__
+    auto bitmap = linuxCaptureScreen();
+    cv::Mat mat = linuxPngToCVMat(bitmap);
+#endif
     cv::Mat cropped = matRelCoords(mat, targetRect);
     cv::Mat thresh = prepareForTesseract(cropped);
 
