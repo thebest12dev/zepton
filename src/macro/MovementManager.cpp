@@ -15,11 +15,191 @@
 
 #include <cstring>
 #include <iostream>
+#include <filesystem>
+extern "C" {
+#include <luajit/lua.h>
+#include <luajit/lauxlib.h>
+#include <luajit/lualib.h>
+}
 
 #ifdef __linux__
 #endif
+#define CONST_BACKING_KEY "__const_backing"
+#define CONST_MT_INSTALLED "__const_mt_installed"
 namespace {
+  static int constIndex(lua_State* L) {
+    const char* key = lua_tostring(L, 2);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
+    lua_pushvalue(L, 2);
+    lua_gettable(L, -2);
+
+    if (!lua_isnil(L, -1)) {
+      return 1;
+    }
+
+    lua_pop(L, 2);
+    lua_pushvalue(L, 2);
+    lua_rawget(L, 1);
+    return 1;
+  }
+
+  static int constNewIndex(lua_State* L) {
+    const char* key = lua_tostring(L, 2);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
+    lua_pushvalue(L, 2);
+    lua_gettable(L, -2);
+
+    if (!lua_isnil(L, -1)) {
+      return luaL_error(L, "attempt to modify read-only constant '%s'", key);
+    }
+
+    lua_pop(L, 2);
+    lua_rawset(L, 1);
+    return 0;
+  }
+
+  static void ensureConstSystem(lua_State* L) {
+    lua_getfield(L, LUA_REGISTRYINDEX, CONST_MT_INSTALLED);
+    if (lua_toboolean(L, -1)) {
+      lua_pop(L, 1);
+      return;
+    }
+    lua_pop(L, 1);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
+    if (lua_isnil(L, -1)) {
+      lua_pop(L, 1);
+      lua_newtable(L);
+      lua_setfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
+    }
+    else {
+      lua_pop(L, 1);
+    }
+
+    lua_getglobal(L, "_G");
+    lua_newtable(L);
+    lua_pushcfunction(L, constIndex);
+    lua_setfield(L, -2, "__index");
+    lua_pushcfunction(L, constNewIndex);
+    lua_setfield(L, -2, "__newindex");
+    lua_setmetatable(L, -2);
+    lua_pop(L, 1);
+
+    lua_pushboolean(L, 1);
+    lua_setfield(L, LUA_REGISTRYINDEX, CONST_MT_INSTALLED);
+  }
+  void setReadonlyGlobal(lua_State* L, const char* key) {
+    ensureConstSystem(L);
+
+    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
+
+    lua_pushvalue(L, -2);   
+    lua_setfield(L, -2, key);
+
+    lua_pop(L, 1);
+    lua_pop(L, 1);
+  }
   using namespace zepton;
+  MovementPlan movementPlan = {};
+  int luaWalk(lua_State* L) {
+      std::vector<char> movementKeys;
+      int n = lua_gettop(L);
+      if (n < 2) {
+          return luaL_error(L, "too few arguments");
+      }
+      else if (n > 2) {
+          return luaL_error(L, "too many arguments");
+      }
+      else if (n == 2) {
+          if (!lua_istable(L, 1)) {
+              return luaL_error(L, "expected an array of keycodes, got %s", lua_typename(L, lua_type(L, 1)));
+          }
+
+          size_t len = lua_objlen(L, 1);
+
+          for (int i = 1; i <= len; i++) {
+              lua_pushinteger(L, i);
+              lua_gettable(L, 1);
+              int val = luaL_checkinteger(L, -1);
+              movementKeys.push_back(val);
+
+              lua_pop(L, 1);
+          }
+          float val = static_cast<float>(luaL_checknumber(L, 2));
+
+          movementPlan.movementSteps.push_back(MovementStep{ .keys = movementKeys, .studs = val });
+      }
+      return 0;
+  }
+  void createSandbox(lua_State* L) {
+    lua_newtable(L);
+    // always need this
+    lua_getglobal(L, "math");
+    lua_setfield(L, -2, "math");
+
+    lua_getglobal(L, "string");
+    lua_setfield(L, -2, "string");
+
+    lua_getglobal(L, "table");
+    lua_setfield(L, -2, "table");
+
+    lua_getglobal(L, "pairs");
+    lua_setfield(L, -2, "pairs");
+
+    lua_getglobal(L, "ipairs");
+    lua_setfield(L, -2, "ipairs");
+
+    lua_getglobal(L, "tostring");
+    lua_setfield(L, -2, "tostring");
+
+    lua_getglobal(L, "tonumber");
+    lua_setfield(L, -2, "tonumber");
+    
+    //zepton globals
+    lua_pushinteger(L, KEY_FORWARD);
+    setReadonlyGlobal(L, "KEY_FORWARD");
+    lua_pushinteger(L, KEY_LEFT);
+    setReadonlyGlobal(L, "KEY_LEFT");
+    lua_pushinteger(L, KEY_RIGHT);
+    setReadonlyGlobal(L, "KEY_RIGHT");
+    
+    // walk(keys_to_press, studs_to_walk)
+    lua_pushcfunction(L, luaWalk);
+
+    lua_setfield(L, -2, "walk");
+
+    lua_newtable(L);
+    lua_pushliteral(L, "locked");
+    lua_setfield(L, -2, "__metatable");
+    lua_setmetatable(L, -2);
+  };
+  
+  zepton::MovementPlan evaluateScript(lua_State* L, const char* filename) {
+    movementPlan = MovementPlan{};
+
+    if (luaL_loadfile(L, filename) != 0) {
+      printf("load error: %s\n", lua_tostring(L, -1));
+      lua_pop(L, 1);
+      return {};
+    }
+
+    createSandbox(L);
+
+    lua_pushvalue(L, -1);
+    lua_setfenv(L, -3);
+    lua_pop(L, 1);
+
+    if (lua_pcall(L, 0, 0, 0) != 0) {
+      printf("runtime error: %s\n", lua_tostring(L, -1));
+      lua_pop(L, 1);
+      return {};
+    }
+
+    return movementPlan;
+  };
+  
 #ifdef __linux__
   std::string getDesktopEnvironment() {
     const char* xdgDesktop = std::getenv("XDG_CURRENT_DESKTOP");
@@ -40,134 +220,10 @@ namespace {
     return "Unknown";
   }
 #endif
-  /*
-    Reference walkspeed which should the patterns be executed at relative to the timings.
-    Typically the developer's walkspeed, if needed change this value then change the
-    patterns.
-
-    TODO: Add a robust walk() function that does not need a reference to work with.
-  */
-  const int referenceWalkspeed = 29;
-  /*
-    Map of locations, movement spots and other paths that can be executed.
-
-    (path) reset: Resets the character, which indirectly goes to spawn or hive.
-
-    (location and location path) spawn: The spawn point used as a reference and to be used as an
-    alternative path if needed.
-
-    (location and location path) red_cannon: The red cannon next to the ramp which is the 
-    primary route to the Pine Tree Forest (pine_field), Mountain Top Field (mountain_field) and
-    Pineapple Patch (pineapple_field) and several others as secondary routes.
-
-    (location path) spawn_ramp: Path to go from spawn to the ramp.
-
-    (location path) hive6_ramp: Allows the 6th (leftmost) hive to go to the ramp. 
-
-    (location path) hive5_ramp: Allows the 5th hive to go to the ramp. 
-
-    (location path) hive4_ramp: Allows the 4th hive to go to the ramp. 
-
-    (location path) hive3_ramp: Allows the 3th (center) hive to go to the ramp. 
-
-    (location path) hive2_ramp: Allows the 2th hive to go to the ramp. 
-
-    (location path) hive1_ramp: Allows the 1th (rightmost) hive to go to the ramp. 
-
-    (location) hive: The player's hive. If hive not detected, acts as the same as spawn, and the
-    location value will be changed accordingly.
-
-    (location) hive_6: The 6th (leftmost) hive.
-
-    (location) hive_5: The 5th hive.
-
-    (location) hive_4: The 4th hive.
-
-    (location) hive_3: The 3th (center) hive.
-
-    (location) hive_2: The 2th hive.
-
-    (location) hive_1: The 1th (rightmost) hive.
-
-    (location) ramp: Represents the ramp next to the Ticket Shop, used primarily to access
-    the 35 Bee Zone and the red cannon.
-  */
-  MovementPlan spawn_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_FORWARD, KEY_RIGHT}, .holdTime = 2.95f},
-      {.keys = {KEY_RIGHT}, .holdTime = 1.f}
-    }
-  };
-  MovementPlan reset = { .movementSteps =
-    {
-      {.keys = {KEY_ESCAPE}, .holdTime = 0.25f},
-      {.keys = {KEY_R}, .holdTime = 0.25f},
-      {.keys = {KEY_ENTER}, .holdTime = 0.25f},
-      {.keys = {KEY_NULL}, .holdTime = 6.5f} // good enough time for roblox to reset
-    },
-    .walkspeedProportionate = false
-    
-  };
-  // to be executed from ramp
-
-  MovementPlan red_cannon = { .movementSteps =
-    {
-      {.keys = {KEY_SPACE}, .holdTime = 0.5f},
-      {.keys = {KEY_RIGHT, KEY_FORWARD}, .holdTime = 0.75f},
-      {.keys = {KEY_SPACE}, .holdTime = 0.5f},
-      {.keys = {KEY_RIGHT}, .holdTime = 0.75f},
-      {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f },
-      {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
-      {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
-      {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
-    }
-  };
-  MovementPlan pine_field_cannon = { .movementSteps =
-    {
-      {.keys = {KEY_NULL}, .holdTime = 0.5f},
-      {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-      {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-      {.keys = {KEY_LEFT, KEY_FORWARD}, .holdTime = 4.f},
-      {.keys = {KEY_FORWARD}, .holdTime = 0.5f},
-      {.keys = {KEY_LEFT}, .holdTime = 1.f},
-      {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-      {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-      {.keys = {KEY_ROTLEFT}, .holdTime = 0.1f},
-      {.keys = {KEY_ROTLEFT}, .holdTime = 0.1f},
-    }
-  };
-  MovementPlan hive6_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_RIGHT}, .holdTime = 8.25f}
-    }
-  };
-  
-  MovementPlan hive5_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_RIGHT}, .holdTime = 6.f}
-    }
-  };
-  MovementPlan hive4_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_RIGHT}, .holdTime = 3.25f}
-    }
-  };
-  MovementPlan hive3_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_RIGHT}, .holdTime = 2.f}
-    }
-  };
-  MovementPlan hive2_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_RIGHT}, .holdTime = 1.25f},
-    }
-  };
-  MovementPlan hive1_ramp = { .movementSteps =
-    {
-      {.keys = {KEY_RIGHT}, .holdTime = 0.5f},
-    }
-  };
+ 
 }
+using namespace zepton::movement;
+#include <fstream>
 namespace zepton {
   // Create the movement manager with our values, the player starts at spawn for now
   MovementManager::MovementManager(Player& player) : location("spawn"), player(player) {
@@ -206,6 +262,38 @@ namespace zepton {
     press(key, static_cast<int>((holdTime) * (static_cast<float>(referenceWalkspeed) / player.getWalkspeed())), sc);
   }
  
+  void MovementManager::walk(MovementStep step) {
+    
+    float dTime = static_cast<float>((step.studs) / player.getWalkspeed());
+    int time = static_cast<int>(dTime * 1000);
+    for (char key : step.keys) {
+      keyDown(key);
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(time));
+    for (char key : step.keys) {
+      keyUp(key);
+    }
+  }
+  
+  void MovementManager::loadPathsAndPatterns() {
+    lua_State* L = luaL_newstate();
+    try {
+        if (std::filesystem::exists("paths") && std::filesystem::is_directory("paths")) {
+        for (const auto& entry : std::filesystem::directory_iterator("paths")) {
+          if (entry.is_regular_file()) {
+              std::string file = entry.path().string();
+             
+              evaluateScript(L, file.c_str());
+             
+          }
+        }
+      }
+    }
+    catch (const std::filesystem::filesystem_error& e) {
+      std::cerr << "error: " << e.what() << std::endl;
+    }
+    // todo: add to registry
+  }
   // Executes a movement plan (path).
   void MovementManager::executeMovement(MovementPlan plan) {
     //focus roblox

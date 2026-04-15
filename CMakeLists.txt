@@ -12,7 +12,7 @@ include(FetchContent)
 project ("zepton")
 find_package(Tesseract CONFIG REQUIRED)
 find_package(OpenCV REQUIRED)
-
+find_package(Lua REQUIRED)
 FetchContent_Declare(
     webview
     GIT_REPOSITORY https://github.com/webview/webview
@@ -23,7 +23,8 @@ FetchContent_MakeAvailable(webview)
 # Add soun rce to this project's executable.
 file(GLOB_RECURSE ZEPTON_SOURCES "src/*.cpp" "src/*.h")
 add_executable(zepton ${ZEPTON_SOURCES})
-target_link_libraries(zepton opencv_imgproc opencv_core Tesseract::libtesseract webview::core)
+target_include_directories(zepton PRIVATE ${LUA_INCLUDE_DIR})
+target_link_libraries(zepton opencv_imgproc opencv_core Tesseract::libtesseract webview::core ${LUA_LIBRARIES})
 if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET zepton PROPERTY CXX_STANDARD 20)
 endif()

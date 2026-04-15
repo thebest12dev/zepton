@@ -1,5 +1,5 @@
 {
   "dependencies": [
-    "tesseract", "opencv4"
+    "tesseract", "opencv4", "luajit"
   ]
 }

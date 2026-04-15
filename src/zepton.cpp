@@ -18,11 +18,11 @@ int main()
  // player.claimHive();
  // player.convertHoney();
   //player.getMovementManager().moveTo("spawn_ramp");
-  player.claimHive();
-  player.convertHoney();
-  player.goToField("pine_field");
+  //player.claimHive();
+  //player.convertHoney();
+  player.getMovementManager().loadPathsAndPatterns();
   //auto zepton = zepton::Zepton::get();
   //zepton.start();
   return 0;
 }
-
+  
