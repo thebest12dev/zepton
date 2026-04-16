@@ -27,80 +27,7 @@ extern "C" {
 #define CONST_BACKING_KEY "__const_backing"
 #define CONST_MT_INSTALLED "__const_mt_installed"
 namespace {
-  static int constIndex(lua_State* L) {
-    const char* key = lua_tostring(L, 2);
 
-    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
-    lua_pushvalue(L, 2);
-    lua_gettable(L, -2);
-
-    if (!lua_isnil(L, -1)) {
-      return 1;
-    }
-
-    lua_pop(L, 2);
-    lua_pushvalue(L, 2);
-    lua_rawget(L, 1);
-    return 1;
-  }
-
-  static int constNewIndex(lua_State* L) {
-    const char* key = lua_tostring(L, 2);
-
-    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
-    lua_pushvalue(L, 2);
-    lua_gettable(L, -2);
-
-    if (!lua_isnil(L, -1)) {
-      return luaL_error(L, "attempt to modify read-only constant '%s'", key);
-    }
-
-    lua_pop(L, 2);
-    lua_rawset(L, 1);
-    return 0;
-  }
-
-  static void ensureConstSystem(lua_State* L) {
-    lua_getfield(L, LUA_REGISTRYINDEX, CONST_MT_INSTALLED);
-    if (lua_toboolean(L, -1)) {
-      lua_pop(L, 1);
-      return;
-    }
-    lua_pop(L, 1);
-
-    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
-    if (lua_isnil(L, -1)) {
-      lua_pop(L, 1);
-      lua_newtable(L);
-      lua_setfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
-    }
-    else {
-      lua_pop(L, 1);
-    }
-
-    lua_getglobal(L, "_G");
-    lua_newtable(L);
-    lua_pushcfunction(L, constIndex);
-    lua_setfield(L, -2, "__index");
-    lua_pushcfunction(L, constNewIndex);
-    lua_setfield(L, -2, "__newindex");
-    lua_setmetatable(L, -2);
-    lua_pop(L, 1);
-
-    lua_pushboolean(L, 1);
-    lua_setfield(L, LUA_REGISTRYINDEX, CONST_MT_INSTALLED);
-  }
-  void setReadonlyGlobal(lua_State* L, const char* key) {
-    ensureConstSystem(L);
-
-    lua_getfield(L, LUA_REGISTRYINDEX, CONST_BACKING_KEY);
-
-    lua_pushvalue(L, -2);   
-    lua_setfield(L, -2, key);
-
-    lua_pop(L, 1);
-    lua_pop(L, 1);
-  }
   using namespace zepton;
   MovementPlan movementPlan = {};
   int luaWalk(lua_State* L) {
@@ -132,9 +59,46 @@ namespace {
           movementPlan.movementSteps.push_back(MovementStep{ .keys = movementKeys, .studs = val });
       }
       return 0;
+  };
+  int luaPressKeys(lua_State* L) {
+      std::vector<char> movementKeys;
+      int n = lua_gettop(L);
+      if (n < 2) {
+          return luaL_error(L, "too few arguments");
+      }
+      else if (n > 2) {
+          return luaL_error(L, "too many arguments");
+      }
+      else if (n == 2) {
+          if (!lua_istable(L, 1)) {
+              return luaL_error(L, "expected an array of keycodes, got %s", lua_typename(L, lua_type(L, 1)));
+          }
+
+          size_t len = lua_objlen(L, 1);
+
+          for (int i = 1; i <= len; i++) {
+              lua_pushinteger(L, i);
+              lua_gettable(L, 1);
+              int val = luaL_checkinteger(L, -1);
+              movementKeys.push_back(val);
+
+              lua_pop(L, 1);
+          }
+          float val = static_cast<float>(luaL_checknumber(L, 2));
+
+          movementPlan.movementSteps.push_back(MovementStep{ .keys = movementKeys, .holdTime = val, .walkspeedProportionate = false });
+      }
+      return 0;
+  }
+  static void setReadonlyGlobal(lua_State* L, int envIndex, const char* key)
+  {
+      lua_pushvalue(L, -1);              
+      lua_setfield(L, envIndex, key);   
+      lua_pop(L, 1);
   }
   void createSandbox(lua_State* L) {
     lua_newtable(L);
+    int env = lua_gettop(L);
     // always need this
     lua_getglobal(L, "math");
     lua_setfield(L, -2, "math");
@@ -159,16 +123,25 @@ namespace {
     
     //zepton globals
     lua_pushinteger(L, KEY_FORWARD);
-    setReadonlyGlobal(L, "KEY_FORWARD");
-    lua_pushinteger(L, KEY_LEFT);
-    setReadonlyGlobal(L, "KEY_LEFT");
-    lua_pushinteger(L, KEY_RIGHT);
-    setReadonlyGlobal(L, "KEY_RIGHT");
+    setReadonlyGlobal(L, env, "KEY_FORWARD");
+    lua_pushinteger(L,KEY_LEFT);
+    setReadonlyGlobal(L, env,"KEY_LEFT");
+    lua_pushinteger(L,KEY_RIGHT);
+    setReadonlyGlobal(L, env,"KEY_RIGHT");
+    lua_pushinteger(L,KEY_SPACE);
+    setReadonlyGlobal(L, env,"KEY_SPACE");
+    lua_pushinteger(L,KEY_ROTLEFT);
+    setReadonlyGlobal(L, env,"KEY_ROTLEFT");
+    lua_pushinteger(L,KEY_ROTRIGHT);
+    setReadonlyGlobal(L, env,"KEY_ROTRIGHT");
     
     // walk(keys_to_press, studs_to_walk)
     lua_pushcfunction(L, luaWalk);
 
     lua_setfield(L, -2, "walk");
+    lua_pushcfunction(L, luaPressKeys);
+
+    lua_setfield(L, -2, "press_keys");
 
     lua_newtable(L);
     lua_pushliteral(L, "locked");
@@ -282,9 +255,9 @@ namespace zepton {
         for (const auto& entry : std::filesystem::directory_iterator("paths")) {
           if (entry.is_regular_file()) {
               std::string file = entry.path().string();
-             
-              evaluateScript(L, file.c_str());
-             
+              std::string fileName = entry.path().stem().string();
+              MovementPlan evaluatedPlan = evaluateScript(L, file.c_str());
+              pathRegistry[fileName] = evaluatedPlan;
           }
         }
       }
@@ -308,18 +281,37 @@ namespace zepton {
       std::system(R"(xdotool search --name "Sober" windowactivate)");
     }
 #endif
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
     for (MovementStep step : plan.movementSteps)
     {
-      float dTime = static_cast<float>((step.holdTime * 1000) * (static_cast<float>(referenceWalkspeed) /player.getWalkspeed() ));
-      int time = static_cast<int>(dTime);
-      for (char key : step.keys) {
-        keyDown(key);
+      if (step.studs > 0) {
+          float dTime = static_cast<float>((step.studs) / player.getWalkspeed());
+          int time = static_cast<int>(dTime * 1000);
+          for (char key : step.keys) {
+              keyDown(key);
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(time));
+          for (char key : step.keys) {
+              keyUp(key);
+          }
       }
-      std::this_thread::sleep_for(std::chrono::milliseconds(time));
-      for (char key : step.keys) {
-        keyUp(key);
+      else if (step.holdTime > 0) {
+          int time = static_cast<int>(step.holdTime * 1000);
+          if (step.walkspeedProportionate) {
+              float dTime = static_cast<float>((step.holdTime * 1000) * (static_cast<float>(referenceWalkspeed) / player.getWalkspeed()));
+              time = static_cast<int>(dTime);
+          }
+          
+          
+          for (char key : step.keys) {
+              keyDown(key);
+          }
+          std::this_thread::sleep_for(std::chrono::milliseconds(time));
+          for (char key : step.keys) {
+              keyUp(key);
+          }
       }
+      
     }
   }
   void MovementManager::moveTo(std::string targetName) {
@@ -329,8 +321,15 @@ namespace zepton {
       if (location != "spawn") {
         moveTo("spawn");
       }
-      executeMovement(spawn_ramp);
-      location = "ramp";
+      if (pathRegistry.contains("spawn_ramp")) {
+          executeMovement(pathRegistry["spawn_ramp"]);
+          location = "ramp";
+      }
+      else {
+
+      }
+      
+      
     }
     else if (NOT_IN_LOCATION("hive_ramp")) {
       if (location == "hive") {
@@ -380,11 +379,23 @@ namespace zepton {
     }
     else if (NOT_IN_LOCATION("red_cannon")) {
       if (location == "ramp") {
-        executeMovement(red_cannon);
+          if (pathRegistry.contains("red_cannon")) {
+              executeMovement(pathRegistry["red_cannon"]);
+              location = "red_cannon";
+          }
+          else {
+
+          }
       }
       else {
         moveTo("ramp");
-        executeMovement(red_cannon);
+        if (pathRegistry.contains("red_cannon")) {
+            executeMovement(pathRegistry["red_cannon"]);
+            location = "red_cannon";
+        }
+        else {
+
+        }
       }
       
     }

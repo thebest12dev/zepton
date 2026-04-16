@@ -17,10 +17,12 @@ int main()
   zepton::Player player; // tessseract thingy linkage
  // player.claimHive();
  // player.convertHoney();
-  //player.getMovementManager().moveTo("spawn_ramp");
+  
   //player.claimHive();
   //player.convertHoney();
   player.getMovementManager().loadPathsAndPatterns();
+  player.goToField("pine_field");
+  //player.goToField("pine_field");
   //auto zepton = zepton::Zepton::get();
   //zepton.start();
   return 0;

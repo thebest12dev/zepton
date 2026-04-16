@@ -33,18 +33,18 @@
 #define KEY_E 0x12
 #define KEY_SPACE 0x39
 #endif
-
+#include <unordered_map>
 namespace zepton {
   
   struct MovementStep {
     std::vector<char> keys;
     float holdTime;
     float studs;
-    
+    bool walkspeedProportionate = true;
   };
   struct MovementPlan {
     std::vector<MovementStep> movementSteps;
-    bool walkspeedProportionate = true;
+    
   };
   namespace movement {
     /*
@@ -99,12 +99,12 @@ namespace zepton {
       (location) ramp: Represents the ramp next to the Ticket Shop, used primarily to access
       the 35 Bee Zone and the red cannon.
     */
-    const zepton::MovementPlan spawn_ramp = { .movementSteps =
-      {
-        {.keys = {KEY_FORWARD, KEY_RIGHT}, .holdTime = 2.95f},
-        {.keys = {KEY_RIGHT}, .holdTime = 1.5f}
-      }
-    };
+    //const zepton::MovementPlan spawn_ramp = { .movementSteps =
+    //  {
+    //    {.keys = {KEY_FORWARD, KEY_RIGHT}, .holdTime = 2.95f},
+    //    {.keys = {KEY_RIGHT}, .holdTime = 1.5f}
+    //  }
+    //};
     const zepton::MovementPlan pattern_simple = { .movementSteps =
       {
         {.keys = {KEY_RIGHT}, .holdTime = 1.f},
@@ -147,23 +147,22 @@ namespace zepton {
         {.keys = {KEY_ENTER}, .holdTime = 0.25f},
         {.keys = {KEY_NULL}, .holdTime = 6.5f} // good enough time for roblox to reset
       },
-      .walkspeedProportionate = false
 
     };
     // to be executed from ramp
 
-    const zepton::MovementPlan red_cannon = { .movementSteps =
-      {
-        {.keys = {KEY_SPACE}, .holdTime = 0.5f},
-        {.keys = {KEY_RIGHT, KEY_FORWARD}, .holdTime = 0.75f},
-        {.keys = {KEY_SPACE}, .holdTime = 0.5f},
-        {.keys = {KEY_RIGHT}, .holdTime = 0.75f},
-        {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f },
-        {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
-        {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
-        {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
-      }
-    };
+    //const zepton::MovementPlan red_cannon = { .movementSteps =
+    //  {
+    //    {.keys = {KEY_SPACE}, .holdTime = 0.5f},
+    //    {.keys = {KEY_RIGHT, KEY_FORWARD}, .holdTime = 0.75f},
+    //    {.keys = {KEY_SPACE}, .holdTime = 0.5f},
+    //    {.keys = {KEY_RIGHT}, .holdTime = 0.75f},
+    //    {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f },
+    //    {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
+    //    {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
+    //    {.keys = {KEY_ROTRIGHT}, .holdTime = 0.1f},
+    //  }
+    //};
     const zepton::MovementPlan pine_field_cannon = { .movementSteps =
       {
         {.keys = {KEY_NULL}, .holdTime = 0.5f},
@@ -215,7 +214,7 @@ namespace zepton {
   private:
     std::string location;
     Player& player;
-    
+    std::unordered_map<std::string, MovementPlan> pathRegistry;
   public:
     void executeMovement(MovementPlan plan);
     MovementManager(Player& player);
