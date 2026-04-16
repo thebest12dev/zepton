@@ -17,9 +17,9 @@
 #include <iostream>
 #include <filesystem>
 extern "C" {
-#include <luajit/lua.h>
-#include <luajit/lauxlib.h>
-#include <luajit/lualib.h>
+#include <lua.h>
+#include <lauxlib.h>
+#include <lualib.h>
 }
 
 #ifdef __linux__
