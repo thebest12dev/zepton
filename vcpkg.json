@@ -1,5 +1,8 @@
 {
   "dependencies": [
-    "tesseract", "opencv4", "luajit"
+    "tesseract",
+    "opencv4",
+    "luajit",
+    "nlohmann-json"
   ]
 }

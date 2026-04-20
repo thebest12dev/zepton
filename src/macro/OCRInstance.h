@@ -1,6 +1,7 @@
 #pragma once
 #include <string>
 #include <tesseract/baseapi.h>
+#include <opencv2/opencv.hpp>
 namespace zepton {
   struct Rect {
     float top;
@@ -17,6 +18,8 @@ namespace zepton {
     OCRInstance();
     void setOCRCoords(Rect rect);
     void setOCRRelCoords(Rect rect);
+    cv::Mat getScreen();
+    cv::Rect toAbsoluteRect(zepton::Rect rect, cv::Mat& mat);
     std::string getText();
   };
 }

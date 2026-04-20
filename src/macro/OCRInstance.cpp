@@ -114,19 +114,19 @@ _exit(1);
   }
 #endif
   cv::Mat matRelCoords(cv::Mat& mat, zepton::Rect& rect) {
-    float x1 = rect.left;
-    float x2 = rect.right;
-    float y1 = rect.top;
-    float y2 = rect.bottom;
+      float x1 = rect.left;
+      float x2 = rect.right;
+      float y1 = rect.top;
+      float y2 = rect.bottom;
 
-    int px1 = static_cast<int>(x1 * mat.cols);
-    int py1 = static_cast<int>(y1 * mat.rows);
-    int px2 = static_cast<int>(x2 * mat.cols);
-    int py2 = static_cast<int>(y2 * mat.rows);
+      int px1 = static_cast<int>(x1 * mat.cols);
+      int py1 = static_cast<int>(y1 * mat.rows);
+      int px2 = static_cast<int>(x2 * mat.cols);
+      int py2 = static_cast<int>(y2 * mat.rows);
 
-    cv::Rect roi(px1, py1, px2 - px1, py2 - py1);
-    cv::Mat cropped = mat(roi);
-    return cropped;
+      cv::Rect roi(px1, py1, px2 - px1, py2 - py1);
+      cv::Mat cropped = mat(roi);
+      return cropped;
   }
   cv::Mat prepareForTesseract(cv::Mat& mat) {
     cv::Mat gray, thresh;
@@ -142,6 +142,16 @@ namespace zepton {
     tesseract.Init(NULL, "eng", tesseract::OEM_LSTM_ONLY);
 
     tesseract.SetPageSegMode(tesseract::PSM_SINGLE_BLOCK);
+  }
+  
+  cv::Rect OCRInstance::toAbsoluteRect(zepton::Rect rect, cv::Mat& mat)
+  {
+      int x1 = static_cast<int>(rect.left * mat.cols);
+      int y1 = static_cast<int>(rect.top * mat.rows);
+      int x2 = static_cast<int>(rect.right * mat.cols);
+      int y2 = static_cast<int>(rect.bottom * mat.rows);
+
+      return cv::Rect(x1, y1, x2 - x1, y2 - y1);
   }
   void OCRInstance::setOCRCoords(Rect rect)
   {
@@ -170,5 +180,15 @@ namespace zepton {
 
     delete[] out;
     return output;
+  }
+  cv::Mat OCRInstance::getScreen() {
+#ifdef _WIN32
+      auto bitmap = winCaptureScreen();
+      cv::Mat mat = winHBitmapToCVMat(bitmap);
+#elif __linux__
+      auto bitmap = linuxCaptureScreen();
+      cv::Mat mat = linuxPngToCVMat(bitmap);
+#endif
+      return mat;
   }
 }

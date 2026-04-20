@@ -15,13 +15,15 @@ int main()
   //zepton::ui::CoreGui gui;
   //gui.start();
   zepton::Player player; // tessseract thingy linkage
- // player.claimHive();
- // player.convertHoney();
-  
-  //player.claimHive();
-  //player.convertHoney();
+ //// player.claimHive();
+ //// player.convertHoney();
+ // 
+ // //player.claimHive();
+ // //player.convertHoney();
   player.getMovementManager().loadPathsAndPatterns();
   player.goToField("pine_field");
+  //zepton::StatMonitor st;
+  //st.startThread();
   //player.goToField("pine_field");
   //auto zepton = zepton::Zepton::get();
   //zepton.start();
