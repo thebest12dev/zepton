@@ -2,6 +2,7 @@
 #include <sstream>
 #include <chrono>
 #include <thread>
+#include "StatMonitor.h"
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -29,8 +30,14 @@ namespace zepton {
   {
     return movementManager.location;
   }
-  void Player::attachStatMonitor(StatMonitor monitor)
+  void Player::attachStatMonitor(StatMonitor* monitor)
   {
+      statMonitor = monitor;
+      statMonitor->setWalkspeed(walkspeed);
+      statMonitor->onWalkspeedUpdate([this](int newWalkspeed) {
+          walkspeed = newWalkspeed;
+          });
+      statMonitor->startThread();
   }
   uint64_t Player::getHoneyPerSecond()
   {

@@ -165,16 +165,16 @@ namespace zepton {
     //};
     const zepton::MovementPlan pine_field_cannon = { .movementSteps =
       {
-        {.keys = {KEY_NULL}, .holdTime = 0.5f},
-        {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-        {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-        {.keys = {KEY_LEFT, KEY_FORWARD}, .holdTime = 4.f},
-        {.keys = {KEY_FORWARD}, .holdTime = 0.5f},
-        {.keys = {KEY_LEFT}, .holdTime = 1.f},
-        {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-        {.keys = {KEY_SPACE}, .holdTime = 0.25f},
-        {.keys = {KEY_ROTLEFT}, .holdTime = 0.1f},
-        {.keys = {KEY_ROTLEFT}, .holdTime = 0.1f},
+        {.keys = {KEY_NULL}, .holdTime = 0.5f, .walkspeedProportionate = false},
+        {.keys = {KEY_SPACE}, .holdTime = 0.25f, .walkspeedProportionate = false},
+        {.keys = {KEY_SPACE}, .holdTime = 0.25f, .walkspeedProportionate = false},
+        {.keys = {KEY_LEFT, KEY_FORWARD}, .holdTime = 4.f, .walkspeedProportionate = false},
+        {.keys = {KEY_FORWARD}, .holdTime = 0.5f, .walkspeedProportionate = false},
+        {.keys = {KEY_LEFT}, .holdTime = 1.f, .walkspeedProportionate = false},
+        {.keys = {KEY_SPACE}, .holdTime = 0.25f, .walkspeedProportionate = false},
+        {.keys = {KEY_SPACE}, .holdTime = 0.25f, .walkspeedProportionate = false},
+        {.keys = {KEY_ROTLEFT}, .holdTime = 0.1f, .walkspeedProportionate = false},
+        {.keys = {KEY_ROTLEFT}, .holdTime = 0.1f, .walkspeedProportionate = false},
       }
     };
     const zepton::MovementPlan hive6_ramp = { .movementSteps =

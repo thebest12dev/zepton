@@ -12,9 +12,11 @@ namespace zepton {
 	  std::thread backgroundThread;
   public:
 	  // Creates an independent thread for OCR.
+	  StatMonitor();
 	  void startThread();
 	  void stopThread();
 	  void setWalkspeed(int walkspeed);
 	  void onWalkspeedUpdate(std::function<void(int updatedWalkspeed)> callback);
+	  ~StatMonitor();
   };
 }
