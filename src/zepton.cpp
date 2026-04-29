@@ -25,6 +25,11 @@ int main()
   player.getMovementManager().loadPathsAndPatterns();
   player.goToField("pine_field");
 
+  player.getMovementManager().executeMovement(zepton::movement::pine_field_corner);
+
+  while (true) {
+	  player.getMovementManager().moveTo("pattern_simple");
+  }
   //player.goToField("pine_field");
   //auto zepton = zepton::Zepton::get();
   //zepton.start();

@@ -538,7 +538,6 @@ namespace zepton {
             // actual haste prediction
             int multiplier = ((0.1 * stacks) + 1); //+ (cocoHaste ? 1.5 : 0));
             int updatedWalkspeed = walkspeed * (multiplier == 0 ? 1 : multiplier);
-            std::cout << updatedWalkspeed << std::endl;
             walkspeedUpdate(updatedWalkspeed);
         }
         return;

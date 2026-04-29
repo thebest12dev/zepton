@@ -128,6 +128,8 @@ namespace {
     setReadonlyGlobal(L, env,"KEY_LEFT");
     lua_pushinteger(L,KEY_RIGHT);
     setReadonlyGlobal(L, env,"KEY_RIGHT");
+    lua_pushinteger(L, KEY_BACKWARD);
+    setReadonlyGlobal(L, env, "KEY_BACKWARD");
     lua_pushinteger(L,KEY_SPACE);
     setReadonlyGlobal(L, env,"KEY_SPACE");
     lua_pushinteger(L,KEY_ROTLEFT);
@@ -242,7 +244,25 @@ namespace zepton {
     for (char key : step.keys) {
       keyDown(key);
     }
-    std::this_thread::sleep_for(std::chrono::milliseconds(time));
+    // polling based mechanism
+    time_t initial = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+    int oldWalkspeed = player.getWalkspeed();
+    while (true) {
+        time_t current = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
+        time_t timeElapsed = current - initial;
+        time_t remainingTime = time - timeElapsed;
+
+        if (remainingTime <= 0) {
+            break;
+        }
+
+        if (oldWalkspeed != player.getWalkspeed()) {
+            dTime = static_cast<float>((step.studs) / player.getWalkspeed());
+            time = static_cast<int>(dTime * 1000);
+        }
+        oldWalkspeed = player.getWalkspeed();
+    }   
     for (char key : step.keys) {
       keyUp(key);
     }
@@ -290,7 +310,26 @@ namespace zepton {
           for (char key : step.keys) {
               keyDown(key);
           }
-          std::this_thread::sleep_for(std::chrono::milliseconds(time));
+          // polling based mechanism
+          time_t initial = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+          int oldWalkspeed = player.getWalkspeed();
+          while (true) {
+              time_t current = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+              
+              time_t timeElapsed = current - initial;
+              time_t remainingTime = time - timeElapsed;
+              
+              if (remainingTime <= 0) {
+                  break;
+              }
+  
+              if (oldWalkspeed != player.getWalkspeed()) {
+                  dTime = static_cast<float>((step.studs) / player.getWalkspeed());
+                  time = static_cast<int>(dTime * 1000);
+              }
+              oldWalkspeed = player.getWalkspeed();
+          }
+          
           for (char key : step.keys) {
               keyUp(key);
           }
@@ -411,6 +450,12 @@ namespace zepton {
       if (location != "pine_field") {
         executeMovement(pine_field_cannon);
       }
+    }
+    else {
+        // some pattern
+        if (pathRegistry.contains(targetName)) {
+            executeMovement(pathRegistry[targetName]);
+        }
     }
   }
   void MovementManager::setLocation(std::string location)
